@@ -37,7 +37,7 @@ class MultiClassNorfair(object):
         t_class_ids = []
         for class_id in self.tracker_dict.keys():
             # 対象クラス抽出
-            target_index = np.in1d(class_ids, np.array(int(class_id)))
+            target_index = np.isin(class_ids, np.array(int(class_id)))
 
             if len(target_index) == 0:
                 continue
