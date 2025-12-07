@@ -225,22 +225,28 @@ class Node(DpgNodeABC):
     def get_setting_dict(self, node_id):
         tag_node_name = str(node_id) + ':' + self.node_tag
         input_value02_tag = tag_node_name + ':' + self.TYPE_INT + ':Input02Value'
+        input_value03_tag = tag_node_name + ':' + self.TYPE_INT + ':Input03Value'
 
-        kernel_size = dpg_get_value(input_value02_tag)
+        min_val = dpg_get_value(input_value02_tag)
+        max_val = dpg_get_value(input_value03_tag)
 
         pos = dpg.get_item_pos(tag_node_name)
 
         setting_dict = {}
         setting_dict['ver'] = self._ver
         setting_dict['pos'] = pos
-        setting_dict[input_value02_tag] = kernel_size
+        setting_dict[input_value02_tag] = min_val
+        setting_dict[input_value03_tag] = max_val
 
         return setting_dict
 
     def set_setting_dict(self, node_id, setting_dict):
         tag_node_name = str(node_id) + ':' + self.node_tag
         input_value02_tag = tag_node_name + ':' + self.TYPE_INT + ':Input02Value'
+        input_value03_tag = tag_node_name + ':' + self.TYPE_INT + ':Input03Value'
 
-        kernel_size = int(setting_dict[input_value02_tag])
+        min_val = int(setting_dict[input_value02_tag])
+        max_val = int(setting_dict[input_value03_tag])
 
-        dpg_set_value(input_value02_tag, kernel_size)
+        dpg_set_value(input_value02_tag, min_val)
+        dpg_set_value(input_value03_tag, max_val)
