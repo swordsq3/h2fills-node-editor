@@ -359,22 +359,39 @@ class Node(DpgNodeABC):
         input_value03_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input03Value'
         input_value04_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input04Value'
         input_value05_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input05Value'
+        input_value06_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input06Value'
+        input_value07_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input07Value'
+        input_value08_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input08Value'
+        input_value09_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input09Value'
+        input_value10_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input10Value'
+        input_value11_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input11Value'
 
-        # 領域指定
-        min_x = float(dpg_get_value(input_value02_tag))
-        max_x = float(dpg_get_value(input_value03_tag))
-        min_y = float(dpg_get_value(input_value04_tag))
-        max_y = float(dpg_get_value(input_value05_tag))
+        x0y0 = float(dpg_get_value(input_value02_tag))
+        x1y0 = float(dpg_get_value(input_value03_tag))
+        x2y0 = float(dpg_get_value(input_value04_tag))
+        x0y1 = float(dpg_get_value(input_value05_tag))
+        x1y1 = float(dpg_get_value(input_value06_tag))
+        x2y1 = float(dpg_get_value(input_value07_tag))
+        x0y2 = float(dpg_get_value(input_value08_tag))
+        x1y2 = float(dpg_get_value(input_value09_tag))
+        x2y2 = float(dpg_get_value(input_value10_tag))
+        k = float(dpg_get_value(input_value11_tag))
 
         pos = dpg.get_item_pos(tag_node_name)
 
         setting_dict = {}
         setting_dict['ver'] = self._ver
         setting_dict['pos'] = pos
-        setting_dict[input_value02_tag] = min_x
-        setting_dict[input_value03_tag] = max_x
-        setting_dict[input_value04_tag] = min_y
-        setting_dict[input_value05_tag] = max_y
+        setting_dict[input_value02_tag] = x0y0
+        setting_dict[input_value03_tag] = x1y0
+        setting_dict[input_value04_tag] = x2y0
+        setting_dict[input_value05_tag] = x0y1
+        setting_dict[input_value06_tag] = x1y1
+        setting_dict[input_value07_tag] = x2y1
+        setting_dict[input_value08_tag] = x0y2
+        setting_dict[input_value09_tag] = x1y2
+        setting_dict[input_value10_tag] = x2y2
+        setting_dict[input_value11_tag] = k
 
         return setting_dict
 
@@ -384,13 +401,31 @@ class Node(DpgNodeABC):
         input_value03_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input03Value'
         input_value04_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input04Value'
         input_value05_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input05Value'
+        input_value06_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input06Value'
+        input_value07_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input07Value'
+        input_value08_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input08Value'
+        input_value09_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input09Value'
+        input_value10_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input10Value'
+        input_value11_tag = tag_node_name + ':' + self.TYPE_FLOAT + ':Input11Value'
 
-        min_x = float(setting_dict[input_value02_tag])
-        max_x = float(setting_dict[input_value03_tag])
-        min_y = float(setting_dict[input_value04_tag])
-        max_y = float(setting_dict[input_value05_tag])
+        x0y0 = float(setting_dict.get(input_value02_tag, 0.0))
+        x1y0 = float(setting_dict.get(input_value03_tag, 0.0))
+        x2y0 = float(setting_dict.get(input_value04_tag, 0.0))
+        x0y1 = float(setting_dict.get(input_value05_tag, 0.0))
+        x1y1 = float(setting_dict.get(input_value06_tag, 1.0))
+        x2y1 = float(setting_dict.get(input_value07_tag, 0.0))
+        x0y2 = float(setting_dict.get(input_value08_tag, 0.0))
+        x1y2 = float(setting_dict.get(input_value09_tag, 0.0))
+        x2y2 = float(setting_dict.get(input_value10_tag, 0.0))
+        k = float(setting_dict.get(input_value11_tag, 1.0))
 
-        dpg_set_value(input_value02_tag, min_x)
-        dpg_set_value(input_value03_tag, max_x)
-        dpg_set_value(input_value04_tag, min_y)
-        dpg_set_value(input_value05_tag, max_y)
+        dpg_set_value(input_value02_tag, x0y0)
+        dpg_set_value(input_value03_tag, x1y0)
+        dpg_set_value(input_value04_tag, x2y0)
+        dpg_set_value(input_value05_tag, x0y1)
+        dpg_set_value(input_value06_tag, x1y1)
+        dpg_set_value(input_value07_tag, x2y1)
+        dpg_set_value(input_value08_tag, x0y2)
+        dpg_set_value(input_value09_tag, x1y2)
+        dpg_set_value(input_value10_tag, x2y2)
+        dpg_set_value(input_value11_tag, k)
