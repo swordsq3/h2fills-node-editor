@@ -187,14 +187,31 @@ class Node(DpgNodeABC):
 
         # 接続元がObjectDetectionノードの場合、各バウンディングボックスに対して推論
         result = {}
+        is_wholebody34 = False
         if frame is not None:
             if src_node_name == 'ObjectDetection':
                 # 物体検出情報取得
                 node_result = node_result_dict.get(connection_info_src, [])
-                od_bboxes = node_result.get('bboxes', [])
-                od_scores = node_result.get('scores', [])
-                od_class_ids = node_result.get('class_ids', [])
-                od_class_names = node_result.get('class_names', [])
+
+                # Wholebody34の場合はboxesキーがある
+                if 'boxes' in node_result:
+                    is_wholebody34 = True
+                    # Wholebody34のboxesからbboxes形式に変換（classid=0のBodyのみ対象）
+                    boxes = node_result.get('boxes', [])
+                    od_bboxes = []
+                    od_scores = []
+                    od_class_ids = []
+                    for box in boxes:
+                        if box['classid'] == 0:  # Bodyのみトラッキング対象
+                            od_bboxes.append([box['x1'], box['y1'], box['x2'], box['y2']])
+                            od_scores.append(box['score'])
+                            od_class_ids.append(box['classid'])
+                    od_class_names = node_result.get('class_names', [])
+                else:
+                    od_bboxes = node_result.get('bboxes', [])
+                    od_scores = node_result.get('scores', [])
+                    od_class_ids = node_result.get('class_ids', [])
+                    od_class_names = node_result.get('class_names', [])
 
                 track_ids, t_bboxes, t_scores, t_class_ids = [], [], [], []
                 track_ids, t_bboxes, t_scores, t_class_ids = self._model_instance[

@@ -1,4 +1,7 @@
 import copy
+import math
+from collections import Counter
+from typing import List, Dict, Tuple
 
 import cv2
 import numpy as np
@@ -7,6 +10,7 @@ import numpy as np
 def draw_info(node_name, node_result, image):
     classification_nodes = ['Classification']
     object_detection_nodes = ['ObjectDetection']
+    wholebody_detection_nodes = ['WholebodyDetection']
     semantic_segmentation_nodes = ['SemanticSegmentation']
     pose_estimation_nodes = ['PoseEstimation']
     face_detection_nodes = ['FaceDetection']
@@ -46,18 +50,48 @@ def draw_info(node_name, node_result, image):
                 class_names,
             )
     elif node_name in object_detection_nodes:
-        bboxes = node_result.get('bboxes', [])
-        scores = node_result.get('scores', [])
-        class_ids = node_result.get('class_ids', [])
-        class_names = node_result.get('class_names', [])
-        score_th = node_result.get('score_th', [])
-        debug_image = draw_object_detection_info(
+        # Wholebody34の結果かどうかを判定（boxesキーがあればWholebody34）
+        if 'boxes' in node_result:
+            boxes = node_result.get('boxes', [])
+            enable_bone_drawing = node_result.get('enable_bone_drawing', False)
+            disable_gender_identification = node_result.get('disable_gender_identification', False)
+            disable_headpose_identification = node_result.get('disable_headpose_identification', False)
+            disable_left_right_hand_identification = node_result.get('disable_left_right_hand_identification', False)
+            debug_image = draw_wholebody34_detection_info(
+                debug_image,
+                boxes,
+                enable_bone_drawing=enable_bone_drawing,
+                disable_gender_identification=disable_gender_identification,
+                disable_headpose_identification=disable_headpose_identification,
+                disable_left_right_hand_identification=disable_left_right_hand_identification,
+            )
+        else:
+            bboxes = node_result.get('bboxes', [])
+            scores = node_result.get('scores', [])
+            class_ids = node_result.get('class_ids', [])
+            class_names = node_result.get('class_names', [])
+            score_th = node_result.get('score_th', [])
+            debug_image = draw_object_detection_info(
+                debug_image,
+                score_th,
+                bboxes,
+                scores,
+                class_ids,
+                class_names,
+            )
+    elif node_name in wholebody_detection_nodes:
+        boxes = node_result.get('boxes', [])
+        enable_bone_drawing = node_result.get('enable_bone_drawing', False)
+        disable_gender_identification = node_result.get('disable_gender_identification', False)
+        disable_headpose_identification = node_result.get('disable_headpose_identification', False)
+        disable_left_right_hand_identification = node_result.get('disable_left_right_hand_identification', False)
+        debug_image = draw_wholebody34_detection_info(
             debug_image,
-            score_th,
-            bboxes,
-            scores,
-            class_ids,
-            class_names,
+            boxes,
+            enable_bone_drawing=enable_bone_drawing,
+            disable_gender_identification=disable_gender_identification,
+            disable_headpose_identification=disable_headpose_identification,
+            disable_left_right_hand_identification=disable_left_right_hand_identification,
         )
     elif node_name in semantic_segmentation_nodes:
         class_num = node_result.get('class_num', [])
@@ -793,3 +827,320 @@ def draw_qrcode_detection_info(
         )
 
     return image
+
+
+# Head pose colors (BGR format)
+_HEAD_POSE_COLORS = {
+    0: (216, 67, 21),   # Front
+    1: (255, 87, 34),   # Right-Front
+    2: (123, 31, 162),  # Right-Side
+    3: (255, 193, 7),   # Right-Back
+    4: (76, 175, 80),   # Back
+    5: (33, 150, 243),  # Left-Back
+    6: (156, 39, 176),  # Left-Side
+    7: (0, 188, 212),   # Left-Front
+}
+
+_HEAD_POSE_NAMES = {
+    0: "Front",
+    1: "Right-Front",
+    2: "Right-Side",
+    3: "Right-Back",
+    4: "Back",
+    5: "Left-Back",
+    6: "Left-Side",
+    7: "Left-Front",
+}
+
+# Skeleton edges
+_WHOLEBODY34_EDGES = [
+    (21, 22), (21, 22),  # collarbone -> shoulder
+    (21, 23),            # collarbone -> solar_plexus
+    (22, 24), (22, 24),  # shoulder -> elbow
+    (22, 30), (22, 30),  # shoulder -> hip_joint
+    (24, 25), (24, 25),  # elbow -> wrist
+    (23, 29),            # solar_plexus -> abdomen
+    (29, 30), (29, 30),  # abdomen -> hip_joint
+    (30, 31), (30, 31),  # hip_joint -> knee
+    (31, 32), (31, 32),  # knee -> ankle
+]
+
+
+def _draw_dashed_line(
+    image: np.ndarray,
+    pt1: Tuple[int, int],
+    pt2: Tuple[int, int],
+    color: Tuple[int, int, int],
+    thickness: int = 1,
+    dash_length: int = 10,
+):
+    dist = ((pt1[0] - pt2[0]) ** 2 + (pt1[1] - pt2[1]) ** 2) ** 0.5
+    dashes = int(dist / dash_length)
+    if dashes == 0:
+        cv2.line(image, pt1, pt2, color, thickness)
+        return
+    for i in range(dashes):
+        start = (
+            int(pt1[0] + (pt2[0] - pt1[0]) * i / dashes),
+            int(pt1[1] + (pt2[1] - pt1[1]) * i / dashes)
+        )
+        end = (
+            int(pt1[0] + (pt2[0] - pt1[0]) * (i + 0.5) / dashes),
+            int(pt1[1] + (pt2[1] - pt1[1]) * (i + 0.5) / dashes)
+        )
+        cv2.line(image, start, end, color, thickness)
+
+
+def _draw_dashed_rectangle(
+    image: np.ndarray,
+    top_left: Tuple[int, int],
+    bottom_right: Tuple[int, int],
+    color: Tuple[int, int, int],
+    thickness: int = 1,
+    dash_length: int = 10
+):
+    tl_tr = (bottom_right[0], top_left[1])
+    bl_br = (top_left[0], bottom_right[1])
+    _draw_dashed_line(image, top_left, tl_tr, color, thickness, dash_length)
+    _draw_dashed_line(image, tl_tr, bottom_right, color, thickness, dash_length)
+    _draw_dashed_line(image, bottom_right, bl_br, color, thickness, dash_length)
+    _draw_dashed_line(image, bl_br, top_left, color, thickness, dash_length)
+
+
+def _draw_wholebody34_skeleton(
+    image: np.ndarray,
+    boxes: List,
+    color: Tuple[int, int, int] = (0, 255, 255),
+    max_dist_threshold: float = 300.0,
+):
+    # Assign person_id to person boxes (classid=0)
+    person_boxes = [b for b in boxes if b['classid'] == 0]
+    for i, pbox in enumerate(person_boxes):
+        pbox['person_id'] = i
+
+    # Assign keypoints to person boxes
+    keypoint_ids = {21, 22, 23, 24, 25, 29, 30, 31, 32}
+    for box in boxes:
+        if box['classid'] in keypoint_ids:
+            box['person_id'] = -1
+            for pbox in person_boxes:
+                if (pbox['x1'] <= box['cx'] <= pbox['x2']) and (pbox['y1'] <= box['cy'] <= pbox['y2']):
+                    box['person_id'] = pbox['person_id']
+                    break
+
+    # Group boxes by classid
+    classid_to_boxes: Dict[int, List] = {}
+    for b in boxes:
+        classid_to_boxes.setdefault(b['classid'], []).append(b)
+
+    edge_counts = Counter(_WHOLEBODY34_EDGES)
+    lines_to_draw = []
+
+    for (pid, cid), repeat_count in edge_counts.items():
+        parent_list = classid_to_boxes.get(pid, [])
+        child_list = classid_to_boxes.get(cid, [])
+
+        if not parent_list or not child_list:
+            continue
+
+        for_parent = repeat_count if (pid in [21, 29]) else 1
+        parent_capacity = [for_parent] * len(parent_list)
+        child_used = [False] * len(child_list)
+
+        pair_candidates = []
+        for i, pbox in enumerate(parent_list):
+            for j, cbox in enumerate(child_list):
+                if (pbox.get('person_id') is not None and
+                    cbox.get('person_id') is not None and
+                    pbox['person_id'] == cbox['person_id']):
+                    dist = math.hypot(pbox['cx'] - cbox['cx'], pbox['cy'] - cbox['cy'])
+                    if dist <= max_dist_threshold:
+                        pair_candidates.append((dist, i, j))
+
+        pair_candidates.sort(key=lambda x: x[0])
+
+        for dist, i, j in pair_candidates:
+            if parent_capacity[i] > 0 and (not child_used[j]):
+                pbox = parent_list[i]
+                cbox = child_list[j]
+                lines_to_draw.append(((pbox['cx'], pbox['cy']), (cbox['cx'], cbox['cy'])))
+                parent_capacity[i] -= 1
+                child_used[j] = True
+
+    for (pt1, pt2) in lines_to_draw:
+        cv2.line(image, pt1, pt2, color, thickness=2)
+
+
+def draw_wholebody34_detection_info(
+    image: np.ndarray,
+    boxes: List,
+    enable_bone_drawing: bool = False,
+    disable_gender_identification: bool = False,
+    disable_headpose_identification: bool = False,
+    disable_left_right_hand_identification: bool = False,
+    line_width: int = 2,
+):
+    debug_image = copy.deepcopy(image)
+    debug_image_h = debug_image.shape[0]
+    debug_image_w = debug_image.shape[1]
+
+    white_line_width = line_width
+    colored_line_width = line_width - 1 if line_width > 1 else 1
+
+    for box in boxes:
+        classid = box['classid']
+        color = (255, 255, 255)
+
+        # Determine color based on classid and attributes
+        if classid == 0:  # Body
+            if not disable_gender_identification:
+                if box.get('gender') == 0:  # Male
+                    color = (255, 0, 0)
+                elif box.get('gender') == 1:  # Female
+                    color = (139, 116, 225)
+                else:
+                    color = (0, 200, 255)
+            else:
+                color = (0, 200, 255)
+        elif classid == 5:  # Body-With-Wheelchair
+            color = (0, 200, 255)
+        elif classid == 6:  # Body-With-Crutches
+            color = (83, 36, 179)
+        elif classid == 7:  # Head
+            if not disable_headpose_identification:
+                head_pose = box.get('head_pose', -1)
+                color = _HEAD_POSE_COLORS.get(head_pose, (216, 67, 21))
+            else:
+                color = (0, 0, 255)
+        elif classid == 16:  # Face
+            color = (0, 200, 255)
+        elif classid == 17:  # Eye
+            color = (255, 0, 0)
+        elif classid == 18:  # Nose
+            color = (0, 255, 0)
+        elif classid == 19:  # Mouth
+            color = (0, 0, 255)
+        elif classid == 20:  # Ear
+            color = (203, 192, 255)
+        elif classid == 21:  # Collarbone
+            color = (0, 0, 255)
+        elif classid == 22:  # Shoulder
+            color = (255, 0, 0)
+        elif classid == 23:  # Solar_plexus
+            color = (252, 189, 107)
+        elif classid == 24:  # Elbow
+            color = (0, 255, 0)
+        elif classid == 25:  # Wrist
+            color = (0, 0, 255)
+        elif classid == 26:  # Hand
+            if not disable_left_right_hand_identification:
+                if box.get('handedness') == 0:  # Left
+                    color = (0, 128, 0)
+                elif box.get('handedness') == 1:  # Right
+                    color = (255, 0, 255)
+                else:
+                    color = (0, 255, 0)
+            else:
+                color = (0, 255, 0)
+        elif classid == 29:  # Abdomen
+            color = (0, 0, 255)
+        elif classid == 30:  # Hip_joint
+            color = (255, 0, 0)
+        elif classid == 31:  # Knee
+            color = (0, 0, 255)
+        elif classid == 32:  # Ankle
+            color = (255, 0, 0)
+        elif classid == 33:  # Foot
+            color = (250, 0, 136)
+
+        x1, y1 = box['x1'], box['y1']
+        x2, y2 = box['x2'], box['y2']
+        cx, cy = box['cx'], box['cy']
+
+        # Draw based on classid
+        if classid in [21, 22, 23, 24, 25, 29, 30, 31, 32]:
+            # Keypoints - draw as dots
+            cv2.circle(debug_image, (cx, cy), 4, (255, 255, 255), -1)
+            cv2.circle(debug_image, (cx, cy), 3, color, -1)
+        elif classid == 0:  # Body
+            if not disable_gender_identification and box.get('gender', -1) == -1:
+                _draw_dashed_rectangle(debug_image, (x1, y1), (x2, y2), color, 2, 10)
+            else:
+                cv2.rectangle(debug_image, (x1, y1), (x2, y2), (255, 255, 255), white_line_width)
+                cv2.rectangle(debug_image, (x1, y1), (x2, y2), color, colored_line_width)
+        elif classid == 7:  # Head
+            if not disable_headpose_identification and box.get('head_pose', -1) == -1:
+                _draw_dashed_rectangle(debug_image, (x1, y1), (x2, y2), color, 2, 10)
+            else:
+                cv2.rectangle(debug_image, (x1, y1), (x2, y2), (255, 255, 255), white_line_width)
+                cv2.rectangle(debug_image, (x1, y1), (x2, y2), color, colored_line_width)
+        elif classid == 26:  # Hand
+            if not disable_left_right_hand_identification and box.get('handedness', -1) == -1:
+                _draw_dashed_rectangle(debug_image, (x1, y1), (x2, y2), color, 2, 10)
+            else:
+                cv2.rectangle(debug_image, (x1, y1), (x2, y2), (255, 255, 255), white_line_width)
+                cv2.rectangle(debug_image, (x1, y1), (x2, y2), color, colored_line_width)
+        else:
+            cv2.rectangle(debug_image, (x1, y1), (x2, y2), (255, 255, 255), white_line_width)
+            cv2.rectangle(debug_image, (x1, y1), (x2, y2), color, colored_line_width)
+
+        # Draw attribute text for Body
+        if classid == 0:
+            generation_txt = ''
+            generation = box.get('generation', -1)
+            if generation == 0:
+                generation_txt = 'Adult'
+            elif generation == 1:
+                generation_txt = 'Child'
+
+            gender_txt = ''
+            gender = box.get('gender', -1)
+            if gender == 0:
+                gender_txt = 'M'
+            elif gender == 1:
+                gender_txt = 'F'
+
+            attr_txt = f'{generation_txt}({gender_txt})' if gender_txt else generation_txt
+
+            if attr_txt:
+                text_x = x1 if x1 + 50 < debug_image_w else debug_image_w - 50
+                text_y = y1 - 10 if y1 - 25 > 0 else 20
+                cv2.putText(debug_image, attr_txt, (text_x, text_y),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
+                cv2.putText(debug_image, attr_txt, (text_x, text_y),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+
+        # Draw head pose text
+        if classid == 7:
+            head_pose = box.get('head_pose', -1)
+            if head_pose != -1:
+                headpose_txt = _HEAD_POSE_NAMES.get(head_pose, '')
+                if headpose_txt:
+                    text_x = x1 if x1 + 50 < debug_image_w else debug_image_w - 50
+                    text_y = y1 - 10 if y1 - 25 > 0 else 20
+                    cv2.putText(debug_image, headpose_txt, (text_x, text_y),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
+                    cv2.putText(debug_image, headpose_txt, (text_x, text_y),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+
+        # Draw handedness text
+        if classid == 26:
+            handedness = box.get('handedness', -1)
+            handedness_txt = ''
+            if handedness == 0:
+                handedness_txt = 'L'
+            elif handedness == 1:
+                handedness_txt = 'R'
+            if handedness_txt:
+                text_x = x1 if x1 + 50 < debug_image_w else debug_image_w - 50
+                text_y = y1 - 10 if y1 - 25 > 0 else 20
+                cv2.putText(debug_image, handedness_txt, (text_x, text_y),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
+                cv2.putText(debug_image, handedness_txt, (text_x, text_y),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+
+    # Draw skeleton
+    if enable_bone_drawing:
+        _draw_wholebody34_skeleton(debug_image, boxes, color=(0, 255, 255), max_dist_threshold=300)
+
+    return debug_image
