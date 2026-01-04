@@ -1,5 +1,10 @@
 [[Japanese](https://github.com/Kazuhito00/Image-Processing-Node-Editor)/English] 
 
+> [!IMPORTANT]
+> This repository is no longer actively maintained.  
+> Core development and major features have been consolidated into **Multimodal-Node-Editor**.  
+> https://github.com/Kazuhito00/Multimodal-Node-Editor
+
 # Image-Processing-Node-Editor
 An application that performs image processing with the node editor.<br>
 It is used for processing verification and comparison.<br>
