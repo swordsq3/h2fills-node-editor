@@ -1,0 +1,20 @@
+{
+  "name": "700bar 기본 충전 시나리오",
+  "description": "SAE J2601 타입 IV 탱크, 단일 밸브, 프리쿨러 -40°C",
+  "dt_s": 1.0,
+  "t_end_s": 300.0,
+  "supply": {
+    "P_MPa": 87.5,
+    "T_K": 233.15
+  },
+  "tank": {
+    "volume_m3": 0.1218,
+    "P_init_MPa": 5.0,
+    "T_init_K": 288.15,
+    "P_max_MPa": 87.5
+  },
+  "valve": {
+    "Cv": 0.8,
+    "orifice_area_m2": 3e-05
+  }
+}
