@@ -27,7 +27,7 @@ class ScopeView:
         self._build()
 
     def _build(self) -> None:
-        with dpg.window(label="Scope / Trend View", tag=self._parent,
+        with dpg.window(label="스코프 / 트렌드 뷰", tag=self._parent,
                         width=700, height=500, pos=(850, 30)):
             with dpg.plot(label="시뮬레이션 트렌드", height=460, width=-1):
                 dpg.add_plot_legend()

@@ -3,7 +3,7 @@ Simulation Orchestrator — 세션 시작/정지, 실행 모드 제어.
 TimeController + GraphEngine + EventBus 를 조율한다.
 """
 from __future__ import annotations
-from app.engine.time_controller import TimeController, SimState
+from app.engine.time_controller import TimeController
 from app.engine.graph_engine import GraphEngine
 from app.engine.event_bus import EventBus, EventLevel
 from app.engine.node_context import NodeContext

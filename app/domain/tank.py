@@ -51,14 +51,15 @@ class TankNode(SimNode):
         p = self.params
 
         dm = mdot_in * dt
+        m_old = self._m          # 에너지 방정식에 사용할 이전 질량 저장
         self._m += dm
 
-        if dm > 0:
-            # 에너지 보존 (단열 근사): dU = h_in * dm_in
-            h_in = (p.cv + R_H2) * T_in   # 이상기체 엔탈피
-            dU = h_in * dm
-            U = p.cv * self._m * self._T + dU - self._P * 1e6 * 0  # 일 항 생략(강체 탱크)
-            self._T = U / (p.cv * self._m) if self._m > 0 else self._T
+        if dm > 0 and self._m > 0:
+            # 에너지 보존: U_old + h_in*dm = U_new (강체 탱크, 일 항 없음)
+            # U = m*cv*T, h_in = (cv+R)*T_in (이상기체 엔탈피)
+            h_in = (p.cv + R_H2) * T_in
+            U = p.cv * m_old * self._T + h_in * dm
+            self._T = U / (p.cv * self._m)
 
         self._P = (self._m * R_H2 * self._T) / (p.volume * 1e6)
 

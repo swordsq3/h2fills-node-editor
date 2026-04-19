@@ -19,8 +19,8 @@ R_H2 = 4124.0
 
 @dataclass
 class ValveParams:
-    Cv: float = 0.5          # 유량계수 [무차원]
-    orifice_area: float = 1e-5   # [m²]
+    Cv: float = 0.5              # 유량계수 [무차원]
+    orifice_area: float = 2e-6   # [m²] — ~0.1 kg/s @ 87 MPa/245 K 목표
     rho_ref: float = 0.0899      # kg/m³ at STP
 
 

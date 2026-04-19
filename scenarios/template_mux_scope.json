@@ -1,0 +1,46 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {
+      "type": "supply", "id": "supply_0", "pos": [50, 150],
+      "params": {"P_MPa": 87.5, "T_K": 233.15}
+    },
+    {
+      "type": "precooler", "id": "precooler_0", "pos": [280, 100],
+      "params": {"UA": 800.0, "T_coolant_K": 233.15, "dP_MPa": 0.5}
+    },
+    {
+      "type": "valve", "id": "valve_0", "pos": [520, 100],
+      "params": {"Cv": 0.8, "orifice_area": 2e-06}
+    },
+    {
+      "type": "tank", "id": "tank_0", "pos": [760, 150],
+      "params": {"volume": 0.1218, "P_init": 5.0, "T_init": 288.15}
+    },
+    {
+      "type": "mux", "id": "mux_0", "pos": [760, 420],
+      "params": {}
+    },
+    {
+      "type": "scope", "id": "scope_0", "pos": [1010, 380],
+      "params": {}
+    }
+  ],
+  "links": [
+    {"src_node": "supply_0",    "src_port": "P_MPa",         "dst_node": "precooler_0", "dst_port": "P_in_MPa"},
+    {"src_node": "supply_0",    "src_port": "T_K",           "dst_node": "precooler_0", "dst_port": "T_in_K"},
+    {"src_node": "precooler_0", "src_port": "P_out_MPa",     "dst_node": "valve_0",     "dst_port": "P_upstream_MPa"},
+    {"src_node": "precooler_0", "src_port": "T_out_K",       "dst_node": "valve_0",     "dst_port": "T_upstream_K"},
+    {"src_node": "valve_0",     "src_port": "mass_flow_kg_s","dst_node": "tank_0",      "dst_port": "mass_flow_in"},
+    {"src_node": "precooler_0", "src_port": "T_out_K",       "dst_node": "tank_0",      "dst_port": "T_in"},
+    {"src_node": "tank_0",      "src_port": "P_MPa",         "dst_node": "valve_0",     "dst_port": "P_downstream_MPa"},
+    {"src_node": "tank_0",      "src_port": "P_MPa",         "dst_node": "mux_0",       "dst_port": "in0"},
+    {"src_node": "tank_0",      "src_port": "T_K",           "dst_node": "mux_0",       "dst_port": "in1"},
+    {"src_node": "valve_0",     "src_port": "mass_flow_kg_s","dst_node": "mux_0",       "dst_port": "in2"},
+    {"src_node": "tank_0",      "src_port": "SOC",           "dst_node": "mux_0",       "dst_port": "in3"},
+    {"src_node": "mux_0",       "src_port": "ch0",           "dst_node": "scope_0",     "dst_port": "ch0"},
+    {"src_node": "mux_0",       "src_port": "ch1",           "dst_node": "scope_0",     "dst_port": "ch1"},
+    {"src_node": "mux_0",       "src_port": "ch2",           "dst_node": "scope_0",     "dst_port": "ch2"},
+    {"src_node": "mux_0",       "src_port": "ch3",           "dst_node": "scope_0",     "dst_port": "ch3"}
+  ]
+}
